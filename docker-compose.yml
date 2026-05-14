@@ -1,5 +1,5 @@
 services:
-  fastapi_app:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
@@ -13,6 +13,8 @@ services:
       - CHROMA_PORT=8000
     depends_on:
       - chromadb
+    volumes:
+      - app_data:/code/app
     restart: unless-stopped
 
   chromadb:
@@ -25,4 +27,5 @@ services:
     restart: unless-stopped
 
 volumes:
+  app_data:
   chroma_data:
