@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: kicau_ai_gateway
     ports:
-      - "8000:8000"
+      - "4000:4000"
     env_file:
       - .env
     environment:

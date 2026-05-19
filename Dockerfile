@@ -17,5 +17,7 @@ RUN pip install --no-cache-dir --upgrade pip \
 # Copy application source code
 COPY ./app ./app
 
+EXPOSE 4000
+
 # Run the FastAPI app with Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "4000"]
