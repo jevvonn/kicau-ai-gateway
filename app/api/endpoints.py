@@ -1,3 +1,6 @@
+import uuid
+from typing import List, Literal
+
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel, Field
 
@@ -13,23 +16,24 @@ from app.utils.file_handler import extract_text, chunk_text
 router = APIRouter()
 
 
+NilaiMoral = Literal["Menabung", "Kejujuran", "Bijak", "Berbagi"]
+StoryIdea = Literal["Sekolah", "Fantasi", "Belanja", "Jelajah"]
+
+
 class StoryRequest(BaseModel):
-    tema: str = Field(default="Fantasi")
-    nilai_moral: str = Field(default="Menabung, Berbagi")
-    fokus_finansial: str = Field(default="Menabung di bank")
+    prompt: str = Field(description="Custom story prompt dari user (Bahasa Indonesia)")
+    nilai_moral: NilaiMoral = Field(default="Menabung")
+    story_idea: StoryIdea = Field(default="Fantasi")
 
 
 class ImageRequest(BaseModel):
-    prompt: str = Field(..., min_length=1)
-    size: str = "1024x1024"
-    quality: str = "standard"
-    upload: bool = True
-    filename: str | None = None
+    prompts: List[str] = Field(description="Daftar prompt gambar, di-generate sekuensial")
+    bucket: str = Field(default="generated-images")
+    image_size: str = Field(default="1280x720")
 
 
 class ImageResponse(BaseModel):
-    b64: str
-    storage: dict | None = None
+    image_urls: List[str]
 
 
 @router.get("/health")
@@ -41,37 +45,56 @@ def health() -> dict:
 def generate_story(req: StoryRequest) -> FinalOutput:
     try:
         return rag_generate_story(
-            tema=req.tema,
+            prompt=req.prompt,
             nilai_moral=req.nilai_moral,
-            fokus_finansial=req.fokus_finansial,
+            story_idea=req.story_idea,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Story generation failed: {e}")
 
 
 @router.post("/image", response_model=ImageResponse)
-async def generate_image(req: ImageRequest) -> ImageResponse:
-    openai_svc = OpenAIService()
-    b64 = openai_svc.generate_image_b64(
-        prompt=req.prompt, size=req.size, quality=req.quality
-    )
+async def generate_images(req: ImageRequest) -> ImageResponse:
+    if not req.prompts:
+        raise HTTPException(status_code=400, detail="prompts must not be empty")
 
-    storage_result: dict | None = None
-    if req.upload:
-        storage_svc = StorageService()
+    openai_svc = OpenAIService()
+    storage_svc = StorageService()
+
+    batch_id = uuid.uuid4().hex[:8]
+    previous_b64: str | None = None
+    image_urls: List[str] = []
+
+    for idx, prompt in enumerate(req.prompts):
         try:
-            storage_result = await storage_svc.upload_base64_image(
-                b64_image=b64,
-                filename=req.filename or "generated.png",
-                extra_fields={"prompt": req.prompt},
+            b64 = openai_svc.generate_image_b64(
+                prompt=prompt,
+                size=req.image_size,
+                input_image=previous_b64,
             )
         except Exception as e:
             raise HTTPException(
                 status_code=502,
-                detail=f"Image generated but upload failed: {e}",
+                detail=f"Image generation failed at index {idx}: {e}",
             )
 
-    return ImageResponse(b64=b64, storage=storage_result)
+        previous_b64 = b64
+
+        try:
+            upload = await storage_svc.upload_base64_image(
+                b64_image=b64,
+                bucket=req.bucket,
+                filename=f"{batch_id}_{idx}.png",
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=502,
+                detail=f"Image upload failed at index {idx}: {e}",
+            )
+
+        image_urls.append(upload.get("image_url") or "")
+
+    return ImageResponse(image_urls=image_urls)
 
 
 @router.post("/rag/upload")

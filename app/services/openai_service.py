@@ -36,6 +36,7 @@ class OpenAIService:
         quality: str = "low",
         output_format: str = "png",
         output_compression: int = 100,
+        input_image: str | None = None,
     ) -> str:
         if not self.image_url:
             raise RuntimeError("OPENAI_IMAGE_BASE_URL is not configured")
@@ -44,14 +45,19 @@ class OpenAIService:
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.image_api_key}",
         }
+
+        width, height = size.split("x")
+
         payload = {
             "prompt": prompt,
-            "size": size,
-            "quality": quality,
-            "output_compression": output_compression,
-            "output_format": output_format,
+            "width": int(width),
+            "height": int(height),
             "n": 1,
+            "model": self.image_model,
         }
+        if input_image:
+            payload["input_image"] = input_image
+
         response = requests.post(
             self.image_url, headers=headers, json=payload, timeout=120
         )

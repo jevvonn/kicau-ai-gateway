@@ -22,9 +22,8 @@ class Settings(BaseSettings):
     chroma_port: int = 8000
     chroma_collection: str = "kicau_rag"
 
-    # Laravel / Supabase storage endpoint
-    laravel_storage_url: str = ""
-    laravel_storage_token: str = ""
+    # Laravel API (storage upload + asset base URL)
+    laravel_api_url: str = ""
 
 
 @lru_cache

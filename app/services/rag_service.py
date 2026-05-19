@@ -57,7 +57,7 @@ Patuhi struktur JSON yang diminta: title, story (6-7 section dengan narrative ma
 """)
 
 
-def build_user_prompt(tema: str, nilai_moral: str, fokus_finansial: str) -> str:
+def build_user_prompt(prompt: str, nilai_moral: str, story_idea: str) -> str:
     return f"""Kamu adalah AI storyteller untuk anak usia 7-10 tahun.
 Gunakan informasi dari dokumen berikut sebagai dasar utama:
 1. Panduan Implementasi Pendidikan Literasi Finansial (OJK)
@@ -70,16 +70,16 @@ Buat cerita anak yang:
 - Mengajarkan kebiasaan baik secara natural (tidak menggurui)
 
 === INPUT DINAMIS ===
-Gunakan parameter berikut (jika tidak ada, pilih default yang paling relevan):
+Gunakan parameter berikut sebagai dasar cerita. Jadikan permintaan custom user sebagai arah utama, lalu padukan dengan nilai moral dan ide cerita yang dipilih.
 
-Tema Cerita:
-{tema}
+Permintaan Custom dari User (Bahasa Indonesia, jadikan sebagai arah utama cerita):
+{prompt}
 
-Nilai Moral:
+Nilai Moral (pilih salah satu: Menabung | Kejujuran | Bijak | Berbagi):
 {nilai_moral}
 
-Fokus Literasi Finansial:
-{fokus_finansial}
+Ide Cerita / Setting (pilih salah satu: Sekolah | Fantasi | Belanja | Jelajah):
+{story_idea}
 
 === ATURAN CERITA ===
 - Buat 6 sampai 7 section (alur berurutan) tanpa nomor, cukup narasi
@@ -232,7 +232,7 @@ def build_rag_chain():
     )
 
 
-def generate_story(tema: str, nilai_moral: str, fokus_finansial: str) -> FinalOutput:
+def generate_story(prompt: str, nilai_moral: str, story_idea: str) -> FinalOutput:
     chain = build_rag_chain()
-    user_prompt = build_user_prompt(tema, nilai_moral, fokus_finansial)
+    user_prompt = build_user_prompt(prompt, nilai_moral, story_idea)
     return chain.invoke(user_prompt)
