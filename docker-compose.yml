@@ -12,7 +12,8 @@ services:
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
     depends_on:
-      - chromadb
+      chromadb:
+        condition: service_healthy
     volumes:
       - app_data:/code/app
     restart: unless-stopped
@@ -24,6 +25,12 @@ services:
       - "8001:8000"
     volumes:
       - chroma_data:/chroma/chroma
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: unless-stopped
 
 volumes:
