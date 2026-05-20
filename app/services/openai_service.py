@@ -53,6 +53,9 @@ class OpenAIService:
             "width": int(width),
             "height": int(height),
             "n": 1,
+            "output_format": "jpeg",
+            "guidance": 1.5,
+            "steps": 10,
             "model": self.image_model,
         }
         if input_image:
