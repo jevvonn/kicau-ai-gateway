@@ -122,7 +122,7 @@ def chat(req: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=400, detail="messages must not be empty")
 
     if not any(m.role == "user" for m in req.messages):
-        raise HTTPException(status_code=400, detail="messages must contain a user message")
+        raise HTTPException(status_code=400, detail="messages must contain a message")
 
     try:
         reply = chat_with_rag([m.model_dump() for m in req.messages])
