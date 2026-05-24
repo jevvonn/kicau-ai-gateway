@@ -8,6 +8,7 @@ from app.services.openai_service import OpenAIService
 from app.services.storage_service import StorageService
 from app.services.rag_service import (
     FinalOutput,
+    chat_with_rag,
     generate_story as rag_generate_story,
     get_vectorstore,
 )
@@ -34,6 +35,24 @@ class ImageRequest(BaseModel):
 
 class ImageResponse(BaseModel):
     image_urls: List[str]
+
+
+ChatRole = Literal["system", "user", "assistant"]
+
+
+class ChatMessage(BaseModel):
+    role: ChatRole
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage] = Field(
+        description="Riwayat percakapan termasuk system prompt dari Laravel"
+    )
+
+
+class ChatResponse(BaseModel):
+    messages: List[ChatMessage]
 
 
 @router.get("/health")
@@ -95,6 +114,22 @@ async def generate_images(req: ImageRequest) -> ImageResponse:
         image_urls.append(upload.get("image_url") or "")
 
     return ImageResponse(image_urls=image_urls)
+
+
+@router.post("/chat", response_model=ChatResponse)
+def chat(req: ChatRequest) -> ChatResponse:
+    if not req.messages:
+        raise HTTPException(status_code=400, detail="messages must not be empty")
+
+    if not any(m.role == "user" for m in req.messages):
+        raise HTTPException(status_code=400, detail="messages must contain a user message")
+
+    try:
+        reply = chat_with_rag([m.model_dump() for m in req.messages])
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Chat failed: {e}")
+
+    return ChatResponse(messages=[ChatMessage(role="assistant", content=reply)])
 
 
 @router.post("/rag/upload")

@@ -236,3 +236,38 @@ def generate_story(prompt: str, nilai_moral: str, story_idea: str) -> FinalOutpu
     chain = build_rag_chain()
     user_prompt = build_user_prompt(prompt, nilai_moral, story_idea)
     return chain.invoke(user_prompt)
+
+
+CHAT_SYSTEM_PROMPT = """Kamu adalah asisten AI ramah anak yang membantu literasi finansial dan nilai moral untuk anak usia 7-10 tahun.
+Gunakan KONTEKS dokumen di bawah sebagai sumber utama jawaban. Jika konteks tidak relevan, jawab berdasarkan pengetahuan umum tapi tetap ramah anak.
+Jangan menyebutkan sumber dokumen secara eksplisit. Gunakan bahasa hangat, singkat, dan mudah dipahami.
+
+KONTEKS:
+{context}"""
+
+
+def _retrieve_context(query: str, k: int = 5) -> str:
+    retriever = get_vectorstore().as_retriever(search_kwargs={"k": k})
+    docs = retriever.invoke(query)
+    return "\n\n".join(d.page_content for d in docs)
+
+
+def chat_with_rag(messages: List[dict]) -> str:
+    last_user = next(
+        (m["content"] for m in reversed(messages) if m.get("role") == "user"),
+        "",
+    )
+    context = _retrieve_context(last_user) if last_user else ""
+
+    rag_system = CHAT_SYSTEM_PROMPT.format(context=context or "(tidak ada konteks)")
+
+    llm_messages: List[dict] = [{"role": "system", "content": rag_system}]
+    for m in messages:
+        role = m.get("role")
+        content = m.get("content", "")
+        if role in ("system", "user", "assistant") and content:
+            llm_messages.append({"role": role, "content": content})
+
+    llm = get_llm()
+    resp = llm.invoke(llm_messages)
+    return resp.content if isinstance(resp.content, str) else str(resp.content)
